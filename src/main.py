@@ -15,7 +15,7 @@ print("VIDEO EXTRACTION")
 print("="*50)
 
 
-input_dir = 'data/ultrasound/segunda_medicion/vascular_50_9'
+input_dir = 'data/ultrasound/segunda_medicion/ME'
 
 rename_dicom_files_sequentially(input_dir)
 
@@ -45,7 +45,7 @@ volumes_output_dir = 'data/volumes'
 if not os.path.exists(volumes_output_dir):
     os.makedirs(volumes_output_dir)
 
-mask_path = "data/crop_masks/mascara_no_borders.png" 
+mask_path = "data/crop_masks/mascara_no_borders_copy.png" 
 
 for filename in os.listdir(extracted_videos_dir):
     video_path = os.path.join(extracted_videos_dir, filename)
@@ -54,6 +54,7 @@ for filename in os.listdir(extracted_videos_dir):
             print(f"\nProcessing video: {filename}")
     
             # Create reconstructor and extract volume
+            # segunda medicion voxel_spacing=(0.187,0.188,3.95)
             reconstructor = VolumeReconstructor(video_path, mask_path=mask_path, voxel_spacing=(0.187,0.188,3.95))
             volume = reconstructor.create_volume()
     

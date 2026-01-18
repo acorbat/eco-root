@@ -86,9 +86,9 @@ def remove_horizontal_reverb_fft_smooth(
     - min_freq_sep: minimum separation (in rows) between peaks to consider distinct.
     """
     H, W = img.shape
-    # compute centered FFT
+    # First you compute the fft, then you shift the zero frequency component to the center, so the low frequencies are in the center and the high frequencies in the outskirts
     F = np.fft.fftshift(np.fft.fft2(img))
-    mag = np.log1p(np.abs(F))
+    mag = np.log1p(np.abs(F)) ## calculates the log-magnitude spectrum, forgetting about the phase information
 
     # vertical profile: mean across columns -> strong vertical peaks correspond to horizontal stripes
     vert_profile = mag.mean(axis=1)
@@ -222,8 +222,8 @@ if __name__ == '__main__':
     # call the improved filter
     cleaned, detected_peaks = remove_horizontal_reverb_fft_smooth(
         imgf,
-        prominence=0.1,      # raise to be more selective (0..1)
-        max_peaks=4,
+        prominence=0.04,      # raise to be more selective (0..1)
+        max_peaks=9,
         notch_sigma=9.0,      # float allowed and recommended
         notch_strength=1,  # how strongly to suppress the peak (0..1)
         debug=True
@@ -237,18 +237,18 @@ if __name__ == '__main__':
     plt.subplot(1,2,2); plt.imshow(cleaned, cmap='gray'); plt.title("Smoothed Notch Result"); plt.axis('off')
     plt.show()
 
-    # Apply after your smooth notch result:
-    dereverb = dereverb_1d_cepstrum(cleaned, qmin=5, qmax=50, alpha=1)
+    # # Apply after your smooth notch result:
+    # dereverb = dereverb_1d_cepstrum(cleaned, qmin=5, qmax=50, alpha=1)
 
-    cv2.imwrite("notch_filter_frame_003.png", (dereverb*255).astype(np.uint8))
+    # cv2.imwrite("notch_filter_frame_003.png", (dereverb*255).astype(np.uint8))
 
-    import matplotlib.pyplot as plt
-    plt.figure(figsize=(10,5))
-    plt.subplot(1,2,1)
-    plt.imshow(cleaned, cmap='gray'); plt.title("After FFT notch")
-    plt.axis('off')
-    plt.subplot(1,2,2)
-    plt.imshow(dereverb, cmap='gray'); plt.title("After notch + cepstral dereverb")
-    plt.axis('off')
-    plt.tight_layout()
-    plt.show()
+    # import matplotlib.pyplot as plt
+    # plt.figure(figsize=(10,5))
+    # plt.subplot(1,2,1)
+    # plt.imshow(cleaned, cmap='gray'); plt.title("After FFT notch")
+    # plt.axis('off')
+    # plt.subplot(1,2,2)
+    # plt.imshow(dereverb, cmap='gray'); plt.title("After notch + cepstral dereverb")
+    # plt.axis('off')
+    # plt.tight_layout()
+    # plt.show()
