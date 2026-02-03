@@ -1,7 +1,7 @@
 import os
 import SimpleITK as sitk
 import numpy as np
-from dicom_utils import extract_video, rename_dicom_files_sequentially
+from utils.dicom_utils import extract_video, rename_dicom_files_sequentially
 from volumeReconstructor import VolumeReconstructor
 from volumeRegistrator import VolumeRegistrator
 from itertools import product
