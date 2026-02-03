@@ -4,7 +4,6 @@ import SimpleITK as sitk
 from skimage import morphology
 import scipy.ndimage as nd
 import os.path
-import dicom_utils
 
 class VolumeReconstructor:
     def __init__(self, video_path, mask_path, sampling_rate=3, voxel_spacing=(1,1,5)):

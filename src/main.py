@@ -1,33 +1,34 @@
 import os
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
 import SimpleITK as sitk
-import numpy as np
 from utils.dicom_utils import extract_video, rename_dicom_files_sequentially
 from volumeReconstructor import VolumeReconstructor
 from volumeRegistrator import VolumeRegistrator
-from itertools import product
-from preprocessing import volume_denoising
+from preprocessing import frangi_3d_filter
 
-# ------------------- SET UP ------------------
-# Extract videos from DICOM files
+# # ------------------- SET UP ------------------
+# # Extract videos from DICOM files
 
-print("\n" + "="*50)
-print("VIDEO EXTRACTION")
-print("="*50)
+# print("\n" + "="*50)
+# print("VIDEO EXTRACTION")
+# print("="*50)
 
 
-input_dir = 'data/ultrasound/segunda_medicion/ME'
+# input_dir = 'data/ultrasound/raices/1'
 
-rename_dicom_files_sequentially(input_dir)
+# rename_dicom_files_sequentially(input_dir)
 
-for filename in os.listdir(input_dir):
+# for filename in os.listdir(input_dir):
         
-    input_path = os.path.join(input_dir, filename)
-    if os.path.isfile(input_path):
-        try:
-            video_path = extract_video(input_path)
-            print(f"Video extracted in: {video_path}")
-        except Exception as e:
-            print(f"Could not extract video from {input_path}: {e}")
+#     input_path = os.path.join(input_dir, filename)
+#     if os.path.isfile(input_path):
+#         try:
+#             video_path = extract_video(input_path)
+#             print(f"Video extracted in: {video_path}")
+#         except Exception as e:
+#             print(f"Could not extract video from {input_path}: {e}")
 
 extracted_videos_dir = 'data/videos'
 
@@ -45,7 +46,7 @@ volumes_output_dir = 'data/volumes'
 if not os.path.exists(volumes_output_dir):
     os.makedirs(volumes_output_dir)
 
-mask_path = "data/crop_masks/mascara_no_borders_copy.png" 
+mask_path = "data/crop_masks/mascara_no_borders.png" 
 
 for filename in os.listdir(extracted_videos_dir):
     video_path = os.path.join(extracted_videos_dir, filename)
@@ -54,8 +55,8 @@ for filename in os.listdir(extracted_videos_dir):
             print(f"\nProcessing video: {filename}")
     
             # Create reconstructor and extract volume
-            # segunda medicion voxel_spacing=(0.187,0.188,3.95)
-            reconstructor = VolumeReconstructor(video_path, mask_path=mask_path, voxel_spacing=(0.187,0.188,3.95))
+            # Using real physical spacing in mm: (x, y, z)
+            reconstructor = VolumeReconstructor(video_path, mask_path=mask_path, sampling_rate=6, voxel_spacing=(0.187, 0.188, 4.167))
             volume = reconstructor.create_volume()
     
             # Generate output filename
@@ -79,9 +80,20 @@ for filename in os.listdir(volumes_output_dir):
     if not filename.endswith('.nii.gz'):
         continue
     img = sitk.ReadImage(os.path.join(volumes_output_dir, filename))
-    img_denoised = volume_denoising(img)
-    sitk.WriteImage(img_denoised, os.path.join(volumes_output_dir, filename))
-    print(f"Denoised volume saved to: {os.path.join(volumes_output_dir, filename)}")    
+    print(f"\nProcessing {filename} with Frangi filter...")
+    
+    # Apply Frangi with optimized parameters for ultrasound root detection
+    img_enhanced = frangi_3d_filter(
+        img, 
+        sigmas_mm=(0.2, 0.3, 0.4, 0.5, 0.6),  # detect roots 1-3mm diameter
+        black_ridges=False,          # bright roots
+        alpha=1,                   # LOW = strict rejection of plate-like structures
+        beta=1,                    # LOW = strict rejection of blob-like structures  
+        gamma=15                     # noise threshold (higher = less sensitive to noise)
+    )
+    
+    sitk.WriteImage(img_enhanced, os.path.join(volumes_output_dir, filename))
+    print(f"Frangi-enhanced volume saved to: {os.path.join(volumes_output_dir, filename)}")    
 
 # -------------------- REGISTRATION ------------------
 # Perform volume registration and fusion
