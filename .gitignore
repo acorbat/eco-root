@@ -23,6 +23,7 @@ venv.bak/
 *.swp
 *.swo
 *~
+.ipynb_checkpoints/
 
 # Project specific
 *.dcm
