@@ -30,3 +30,6 @@ venv.bak/
 *.AVI
 *.bpm
 datos enzo
+# pixi environments
+.pixi/*
+!.pixi/config.toml

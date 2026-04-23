@@ -1,0 +1,17 @@
+[workspace]
+authors = ["Agustin Corbat <acorbat@df.uba.ar>"]
+channels = ["conda-forge"]
+name = "eco-root"
+platforms = ["win-64"]
+version = "0.1.0"
+
+[tasks]
+
+[dependencies]
+python = "3.11.*"
+numpy = ">=2.4.3,<3"
+opencv = ">=4.13.0,<5"
+simpleitk = ">=2.5.3,<3"
+scikit-image = ">=0.26.0,<0.27"
+scipy = ">=1.17.1,<2"
+pydicom = ">=3.0.2,<4"
