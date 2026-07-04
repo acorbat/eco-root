@@ -58,31 +58,45 @@ class VolumeRegistrator:
 
     def create_reference_volume(self):
         """
-        Create a larger reference volume for hexagonal fusion based on the first volume.
-        
+        Create a reference volume for hexagonal fusion based on the first volume.
+
+        Notes:
+        - We only rotate around the Z axis.
+        - Therefore, we expand X/Y to fit all in-plane rotations, while keeping Z unchanged.
+        - This avoids massive over-allocation when Z spacing is much larger than X/Y spacing.
+
         Returns:
             SimpleITK.Image: Reference volume for registration
         """
         if not self.volumes:
             raise RuntimeError("No volumes loaded. Call load_volumes() first.")
-            
-        fixed = self.volumes[0]
-        size = np.array(fixed.GetSize())
-        spacing = np.array(fixed.GetSpacing())
 
-        # get the center point of the view
-        center = fixed.TransformContinuousIndexToPhysicalPoint(size / 2)
-        
-        # Create a larger volume for the hexagon
-        max_dim = max(size * spacing) * 1.5 
-        new_spacing = spacing
-        new_size = [int(max_dim / s) for s in new_spacing]
-        
+        fixed = self.volumes[0]
+        size = np.array(fixed.GetSize(), dtype=np.float64)      # (x, y, z)
+        spacing = np.array(fixed.GetSpacing(), dtype=np.float64)  # (sx, sy, sz)
+
+        # Center of rotation / reference in physical space
+        center = fixed.TransformContinuousIndexToPhysicalPoint(size / 2.0)
+
+        # Physical extents in mm
+        extent_x = size[0] * spacing[0]
+        extent_y = size[1] * spacing[1]
+
+        # In-plane bounding box that can contain any rotation of the XY rectangle
+        # (diagonal of the rectangle), with a small safety margin.
+        diagonal_xy = np.sqrt(extent_x**2 + extent_y**2)
+        margin = 1.10
+
+        new_size_x = int(np.ceil((diagonal_xy * margin) / spacing[0]))
+        new_size_y = int(np.ceil((diagonal_xy * margin) / spacing[1]))
+        new_size_z = int(size[2])  # keep full plane count, no unnecessary Z inflation
+
+        new_size = [new_size_x, new_size_y, new_size_z]
         reference = sitk.Image(new_size, sitk.sitkFloat32)
-        reference.SetSpacing(new_spacing)
-        reference.SetOrigin(np.array(center) - np.array(reference.GetSpacing()) * np.array(reference.GetSize()) / 2)
+        reference.SetSpacing(tuple(spacing))
+        reference.SetOrigin(np.array(center) - spacing * np.array(new_size) / 2.0)
         reference.SetDirection(fixed.GetDirection())
-        
+
         self.reference_volume = reference
         return reference, center
 
@@ -98,8 +112,10 @@ class VolumeRegistrator:
             
         reference, center = self.create_reference_volume()
         
-        fused_array = np.zeros(sitk.GetArrayFromImage(reference).shape, dtype=np.float32)
-        count_array = np.zeros_like(fused_array, dtype=np.float32)
+        # NumPy shape is (z, y, x), while SITK size is (x, y, z)
+        ref_shape_zyx = tuple(int(v) for v in reference.GetSize()[::-1])
+        fused_array = np.zeros(ref_shape_zyx, dtype=np.float32)
+        count_array = np.zeros(ref_shape_zyx, dtype=np.float32)
         
         for i, vol in enumerate(self.volumes):
             print(f"Processing volume {i} ({self.names[i]})...")

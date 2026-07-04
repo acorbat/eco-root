@@ -437,7 +437,6 @@ def apply_reverberation_filters(
     volume: np.ndarray,
     params: ReverberationFilterParams,
     *,
-    output_domain: str = "image",
     clip_nonnegative: bool = False,
 ) -> np.ndarray:
     """Apply reverberation filtering with the full preprocessing sequence.
@@ -447,10 +446,6 @@ def apply_reverberation_filters(
 
     If clip_nonnegative=True, outputs are clipped to [0, +inf).
     Keep clip_nonnegative=False for closest parity with notebook high-pass-domain results.
-
-    output_domain:
-      - "high_pass": returns final_cleaned_vol
-      - "image": reconstructs image-domain result using pre-step background/normalization terms
     """
     if volume.ndim != 3:
         raise ValueError(f"Expected a 3D (z, y, x) volume, got shape {volume.shape}.")
@@ -462,26 +457,14 @@ def apply_reverberation_filters(
     )
 
     swt_vol_filtered = apply_targeted_swt_suppression(high_pass, params)
-    if clip_nonnegative:
-        swt_vol_filtered = np.clip(swt_vol_filtered, 0.0, None)
 
     comb_filtered_vol = apply_multi_harmonic_comb_notch(swt_vol_filtered, params)
-    if clip_nonnegative:
-        comb_filtered_vol = np.clip(comb_filtered_vol, 0.0, None)
 
     final_cleaned_vol = apply_row_energy_sigmoid_gate(comb_filtered_vol, params)
     if clip_nonnegative:
         final_cleaned_vol = np.clip(final_cleaned_vol, 0.0, None)
 
-    if output_domain == "high_pass":
-        return final_cleaned_vol.astype(np.float32)
-    if output_domain != "image":
-        raise ValueError("output_domain must be 'image' or 'high_pass'.")
-
-    restored = background + final_cleaned_vol * hp_std + hp_mean
-    if clip_nonnegative:
-        restored = np.clip(restored, 0.0, None)
-    return restored.astype(np.float32)
+    return final_cleaned_vol.astype(np.float32)
 
 
 def preprocess_dicom_reverberation(
